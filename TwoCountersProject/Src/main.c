@@ -16,9 +16,9 @@
 #include "App.h"
 #include "Switch.h"
 
-Task t1 = {APP_sendTask, 1000, 0};
+Task t1 = {APP_sendTask, 1000, 2};
 Task t2 = {CLcd_Task, 1000, 1};
-Task t3 = {Switch_Task, 1000, 2};
+Task t3 = {Switch_Task, 1000, 0};
 
 void main(void)
 {
