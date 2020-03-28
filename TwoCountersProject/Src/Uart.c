@@ -202,7 +202,6 @@ extern Std_ReturnType Uart_Init(uint32_t baudRate, uint32_t stopBits, uint32_t p
     UART1->CR1 &= UART_PS_CLR;
     UART1->CR1 |= parity;
   }
-  UART1->CR1 |= UART_UE_SET | UART_TXEIE_SET | UART_RXNEIE_SET | UART_TE_SET | UART_RE_SET;
   UART1->CR2 &= UART_STOP_CLR;
   UART1->CR2 |= stopBits;
   UART1->CR3 &= UART_RTSE_CLR;
@@ -210,6 +209,7 @@ extern Std_ReturnType Uart_Init(uint32_t baudRate, uint32_t stopBits, uint32_t p
   UART1->GTPR |= UART_NO_PRESCALER;
   rxBuffer.state = UART_BUFFER_IDLE;
   txBuffer.state = UART_BUFFER_IDLE;
+  UART1->CR1 |= UART_UE_SET | UART_TXEIE_SET | UART_RXNEIE_SET | UART_TE_SET | UART_RE_SET;
   NVIC_controlInterrupt(NVIC_IRQNUM_USART1, NVIC_ENABLE);
   return E_OK;
 }
