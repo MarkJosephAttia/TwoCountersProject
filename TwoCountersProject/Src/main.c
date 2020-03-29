@@ -17,10 +17,10 @@
 #include "App.h"
 #include "Switch.h"
 
-Task t1 = {APP_sendTask, 1000, 2};
-Task t2 = {CLcd_Task, 1000, 1};
-Task t3 = {Switch_Task, 1000, 0};
-Task t4 = {HUart_Task, 1000, 4};
+Task t1 = {APP_sendTask, 4000, 2};
+Task t2 = {CLcd_Task, 1000, 3};
+Task t3 = {Switch_Task, 4000, 0};
+Task t4 = {HUart_Task, 1000, 1};
 
 void main(void)
 {
