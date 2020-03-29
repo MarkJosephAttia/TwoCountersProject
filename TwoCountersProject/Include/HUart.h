@@ -111,4 +111,10 @@ extern Std_ReturnType HUart_SetRxCb(hUartRxCb_t func);
  */
 extern Std_ReturnType HUart_SetTxCb(hUartTxCb_t func);
 
+/**
+ * @brief The HUart Running task to handle the UART Requests
+ * 
+ */
+extern void HUart_Task(void);
+
 #endif

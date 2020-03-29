@@ -12,7 +12,7 @@
 #ifndef SCHED_CONF_H
 #define SCHED_CONF_H
 
-#define SCHED_MAX_TASK_NUM      3
+#define SCHED_MAX_TASK_NUM      4
 
 /* Masks for clock configuration */
 #define SCHED_AHB_PREVAL RCC_AHB_NDIVIDED

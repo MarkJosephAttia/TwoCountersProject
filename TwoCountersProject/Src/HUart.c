@@ -21,6 +21,8 @@
 #define HUART_DEFAULT_MODULE       HUART_MODULE_1
 #endif
 
+#define UART_QUEUE_LENGTH             5
+
 #define UART_NUMBER_OF_MODULES        5
 
 #define HUART_NOT_INITIALIZED         1
@@ -37,11 +39,88 @@ typedef struct
 
 }hUartConfig_t;
 
-static hUartConfig_t HUart_config[UART_NUMBER_OF_MODULES];
+typedef struct
+{
+    uint8_t* data;
+    uint16_t len;
 
-static uint8_t HUart_module =  HUART_DEFAULT_MODULE;
-static uint8_t isInitialized[UART_NUMBER_OF_MODULES] = {HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED};
-static uint8_t isConfigured[UART_NUMBER_OF_MODULES] =  {HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED};
+}hUartPacket_t;
+
+typedef struct
+{
+    uint8_t nPackets;
+    hUartPacket_t packet[UART_QUEUE_LENGTH];
+}hUartQueue_t;
+
+static volatile hUartQueue_t HUart_rxQueue[UART_NUMBER_OF_MODULES];
+static volatile hUartQueue_t HUart_txQueue[UART_NUMBER_OF_MODULES];
+
+static volatile hUartConfig_t HUart_config[UART_NUMBER_OF_MODULES];
+
+static volatile uint8_t HUart_module =  HUART_DEFAULT_MODULE;
+static volatile uint8_t isInitialized[UART_NUMBER_OF_MODULES] = {HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED, HUART_NOT_INITIALIZED};
+static volatile uint8_t isConfigured[UART_NUMBER_OF_MODULES] =  {HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED, HUART_NOT_CONFIGURED};
+
+/**
+ * @brief A push request into a queue
+ * 
+ * @param queue The desired queue
+ * @param packet The packet to push
+ * @return Std_ReturnType 
+ */
+static Std_ReturnType HUart_QueuePush(volatile hUartQueue_t* queue, hUartPacket_t* packet)
+{
+    Std_ReturnType error = E_NOT_OK;
+    if(queue->nPackets < UART_QUEUE_LENGTH)
+    {
+        queue->packet[queue->nPackets].data = packet->data;
+        queue->packet[queue->nPackets].len = packet->len;
+        queue->nPackets++;
+        error = E_OK;
+    }
+    return error;
+}
+
+/**
+ * @brief A get request from the queue
+ * 
+ * @param queue The desired queue
+ * @param packet The packet to push
+ * @return Std_ReturnType 
+ */
+static Std_ReturnType HUart_QueueGet(volatile hUartQueue_t* queue, hUartPacket_t* packet)
+{
+    Std_ReturnType error = E_NOT_OK;
+    if(queue->nPackets > 0)
+    {
+        packet->data = queue->packet[0].data;
+        packet->len = queue->packet[0].len;
+        error = E_OK;
+    }
+    return error;
+}
+/**
+ * @brief A pop request from the queue
+ * 
+ * @param hUartQueue_t the queue to pop from
+ * @return Std_ReturnType 
+ */
+static Std_ReturnType HUart_QueuePop(volatile hUartQueue_t* queue)
+{
+    Std_ReturnType error = E_NOT_OK;
+    uint8_t i;
+    if(queue->nPackets > 0)
+    {
+        for(i=0; i<queue->nPackets-1; i++)
+        {
+            queue->packet[i].data = queue->packet[i + 1].data;
+            queue->packet[i].len = queue->packet[i + 1].len;
+        }
+        queue->nPackets--;
+        error = E_OK;
+    }
+    return error;
+}
 
 /**
  * @brief Initializes the UART Module
@@ -171,9 +250,12 @@ Std_ReturnType HUart_SetModule(uint8_t uartModule)
 Std_ReturnType HUart_Send(uint8_t *data, uint16_t length)
 {
     Std_ReturnType error = E_NOT_OK;
+    hUartPacket_t pack;
     if(HUART_INITIALIZED == isInitialized[HUart_module])
     {
-        error = Uart_Send(data, length, HUart_module);
+        pack.data = data;
+        pack.len = length;
+        error = HUart_QueuePush(&HUart_txQueue[HUart_module], &pack);
     }
     return error;
 }
@@ -189,9 +271,12 @@ Std_ReturnType HUart_Send(uint8_t *data, uint16_t length)
 Std_ReturnType HUart_Receive(uint8_t *data, uint16_t length)
 {
     Std_ReturnType error = E_NOT_OK;
+    hUartPacket_t pack;
     if(HUART_INITIALIZED == isInitialized[HUart_module])
     {
-        error = Uart_Receive(data, length, HUart_module);
+        pack.data = data;
+        pack.len = length;
+        error = HUart_QueuePush(&HUart_rxQueue[HUart_module], &pack);
     }
     return error;
 }
@@ -222,4 +307,31 @@ Std_ReturnType HUart_SetTxCb(hUartTxCb_t func)
 {
     Uart_SetTxCb(func, HUart_module);
     return E_OK;
+}
+
+/**
+ * @brief The HUart Running task to handle the UART Requests
+ * 
+ */
+void HUart_Task(void)
+{
+    uint8_t i;
+    hUartPacket_t packet;
+    for(i=0; i<UART_NUMBER_OF_MODULES; i++)
+    {
+        if(E_OK == HUart_QueueGet(&HUart_rxQueue[i], &packet))
+        {
+            if(E_OK == Uart_Receive(packet.data, packet.len, i))
+            {
+                HUart_QueuePop(&HUart_rxQueue[i]);
+            }
+        }
+        if(E_OK == HUart_QueueGet(&HUart_txQueue[i], &packet))
+        {
+            if(E_OK == Uart_Send(packet.data, packet.len, i))
+            {
+                HUart_QueuePop(&HUart_txQueue[i]);
+            }
+        }
+    }
 }

@@ -10,7 +10,8 @@
  */
 #include "Std_Types.h"
 #include "SCHED1.h"
-
+#include "HUart_Cfg.h"
+#include "HUart.h"
 #include "HRcc.h"
 #include "CLcd.h"
 #include "App.h"
@@ -19,6 +20,7 @@
 Task t1 = {APP_sendTask, 1000, 2};
 Task t2 = {CLcd_Task, 1000, 1};
 Task t3 = {Switch_Task, 1000, 0};
+Task t4 = {HUart_Task, 1000, 4};
 
 void main(void)
 {
@@ -27,6 +29,7 @@ void main(void)
 	SCHED_createTask(&t1);
 	SCHED_createTask(&t2);
 	SCHED_createTask(&t3);
+	SCHED_createTask(&t4);
 
 	APP_init();
 	SCHED_init();
