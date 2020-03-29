@@ -16,8 +16,8 @@ typedef struct
     uint8_t activeState;
 } switch_t;
 
-#define SWITCH_NOT_PRESSED              1
 #define SWITCH_PRESSED                  0
+#define SWITCH_NOT_PRESSED              !SWITCH_PRESSED
 
 /**
  * Function:  Switch_Init 

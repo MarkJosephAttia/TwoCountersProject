@@ -17,7 +17,7 @@ typedef struct
 } led_t;
 
 #define LED_ON              0
-#define LED_OFF             1
+#define LED_OFF             !LED_ON
 
 /**
  * Function:  Led_Init 

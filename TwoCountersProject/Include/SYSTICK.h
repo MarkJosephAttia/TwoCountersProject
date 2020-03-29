@@ -1,5 +1,11 @@
 /**
- * @brief This is the user interface for the Systick driver
+ * @file SYSTICK.h
+ * @author Mariam Mohammed
+ * @brief This is the user interface for the Systick Driver
+ * @version 0.1
+ * @date 2020-03-29
+ * 
+ * @copyright Copyright (c) 2020
  * 
  */
 /* Masks to be used in SYSTICK_CONF.h : SYSTICK_CLK_SRC */

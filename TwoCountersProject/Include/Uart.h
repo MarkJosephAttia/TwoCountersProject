@@ -11,6 +11,12 @@
 #ifndef UART_H
 #define UART_H
 
+#define UART1       0
+#define UART2       1
+#define UART3       2
+#define UART4       3
+#define UART5       4
+
 #define UART_ODD_PARITY 0x00000200
 #define UART_EVEN_PARITY 0x00000000
 #define UART_NO_PARITY 0xFFFFFBFF
@@ -37,51 +43,82 @@ typedef void (*rxCb_t)(void);
  * @param flowControl the flow control
  *                 UART_FLOW_CONTROL_EN
  *                 UART_FLOW_CONTROL_DIS
+ * @param sysClk the clock of the system
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the function executed successfully
  *                  E_NOT_OK: If the did not execute successfully
  */
 extern Std_ReturnType Uart_Init(uint32_t baudRate, uint32_t stopBits,
-                                uint32_t parity, uint32_t flowControl);
+                                uint32_t parity, uint32_t flowControl, uint32_t sysClk, uint8_t uartModule);
 /**
  * @brief Sends data through the UART
  *
  * @param data The data to send
  * @param length the length of the data in bytes
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the driver is ready to send
  *                  E_NOT_OK: If the driver can't send data right now
  */
-extern Std_ReturnType Uart_Send(uint8_t *data, uint16_t length);
+extern Std_ReturnType Uart_Send(uint8_t *data, uint16_t length, uint8_t uartModule);
 /**
  * @brief Receives data through the UART
  *
  * @param data The buffer to receive data in
  * @param length the length of the data in bytes
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the driver is ready to receive
  *                  E_NOT_OK: If the driver can't receive data right now
  */
-extern Std_ReturnType Uart_Receive(uint8_t *data, uint16_t length);
+extern Std_ReturnType Uart_Receive(uint8_t *data, uint16_t length, uint8_t uartModule);
 /**
  * @brief Sets the callback function that will be called when transmission is
  * completed
  *
  * @param func the callback function
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the function executed successfully
  *                  E_NOT_OK: If the did not execute successfully
  */
-extern Std_ReturnType Uart_SetTxCb(txCb_t func);
+extern Std_ReturnType Uart_SetTxCb(txCb_t func, uint8_t uartModule);
 /**
  * @brief Sets the callback function that will be called when receive is
  * completed
  *
  * @param func the callback function
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the function executed successfully
  *                  E_NOT_OK: If the did not execute successfully
  */
-extern Std_ReturnType Uart_SetRxCb(rxCb_t func);
+extern Std_ReturnType Uart_SetRxCb(rxCb_t func, uint8_t uartModule);
 
 #endif

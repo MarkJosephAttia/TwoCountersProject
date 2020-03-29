@@ -1,9 +1,15 @@
 /**
- * @brief This is a user interface for the Scheduler Driver
+ * @file SCHED1.h
+ * @author Mariam Mohammed
+ * @brief This is the user interface for the scheduler
+ * @version 0.1
+ * @date 2020-03-29
+ * 
+ * @copyright Copyright (c) 2020
  * 
  */
- #ifndef SCHED1_H
- #define SCHED1_H 
+#ifndef SCHED1_H
+#define SCHED1_H 
 typedef void (*taskRunnable)(void);
 
 typedef struct

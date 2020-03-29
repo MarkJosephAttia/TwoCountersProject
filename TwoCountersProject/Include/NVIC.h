@@ -1,3 +1,13 @@
+/**
+ * @file NVIC.h
+ * @author Mariam Mohammed
+ * @brief This is the user interface for the NVIC driver
+ * @version 0.1
+ * @date 2020-03-29
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ */
 #ifndef NVIC_H_
 #define NVIC_H_
 /** interruptNum **/
