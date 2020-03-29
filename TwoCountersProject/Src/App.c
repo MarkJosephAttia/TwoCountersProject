@@ -83,16 +83,10 @@ void APP_receiveFcn(void)
   char strBuffer[20];
 
   /* Toggle Led */
-  static u8 ledStat = LED_OFF;
-  ledStat ^= 1;
-  if(ledStat)
-  {
-    Led_SetLedOn(LED_1);
-  }
-  else
-  {
-    Led_SetLedOff(LED_1);
-  }
+  static u8 ledStat = LED_ON;
+  ledStat = !ledStat;
+  
+  Led_SetLedStatus(LED_1, ledStat);
   
   /* Display on LCD */
   itoa(recFrame.fullFrame, strBuffer, 10);
