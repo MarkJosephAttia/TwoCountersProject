@@ -637,6 +637,7 @@ static Std_ReturnType CLcd_GotoProcess(void)
 Std_ReturnType CLcd_SetDoneNotification(lcdCb_t cb)
 {
 	appNotify = cb;
+	return E_OK;
 }
 
 /**

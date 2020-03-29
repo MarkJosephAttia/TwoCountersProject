@@ -11,7 +11,8 @@
 #include "Std_Types.h"
 #include <stdlib.h>
 #include "stdio.h"
-#include "Uart.h"
+#include "HUart_Cfg.h"
+#include "HUart.h"
 #include "Clcd.h"
 #include "Switch_Cfg.h"
 #include "Switch.h"
@@ -34,16 +35,20 @@ static volatile u32 counter = 0;
 
 /**
  * @brief This is the initialization for the two counter application
- * 
+ *  @returns: A status
+ *                 E_OK : if the function is executed correctly
+ *                 E_NOT_OK : if the function is not executed correctly
  */
-void APP_init(void)
+Std_ReturnType APP_init(void)
 {
+  Std_ReturnType error = E_OK;
   Led_Init();
   Switch_Init();
-  CLcd_Init(CLCD_TWO_LINES, CLCD_CURSOR_OFF, CLCD_BLINKING_OFF);
-  Uart_Init(9600, UART_STOP_ONE_BIT, UART_NO_PARITY, UART_FLOW_CONTROL_DIS);
-  Uart_SetRxCb(APP_receiveFcn);
-  Uart_Receive(recFrame.data, 4);
+  error |= CLcd_Init(CLCD_TWO_LINES, CLCD_CURSOR_OFF, CLCD_BLINKING_OFF);
+  HUart_Init();
+  HUart_SetRxCb(APP_receiveFcn);
+  error |= HUart_Receive(recFrame.data, 4);
+  return error;
 }
 
 /**
@@ -52,7 +57,6 @@ void APP_init(void)
  */
 void APP_sendTask(void)
 {
-
   static u8 prevSwitchStat = SWITCH_NOT_PRESSED;
   static u8 currentSwitchState = SWITCH_NOT_PRESSED;
 
@@ -63,7 +67,7 @@ void APP_sendTask(void)
     counter++;
     prevSwitchStat = SWITCH_PRESSED;
     sendFrame.fullFrame = counter;
-    Uart_Send(sendFrame.data, 4);
+    HUart_Send(sendFrame.data, 4);
   }
    prevSwitchStat = currentSwitchState;
 }
@@ -72,7 +76,7 @@ void APP_sendTask(void)
 
 /**
  * @brief The receive function that will be called after each received frame
- * 
+ *
  */
 void APP_receiveFcn(void)
 {
@@ -92,6 +96,6 @@ void APP_receiveFcn(void)
   
   /* Display on LCD */
   itoa(recFrame.fullFrame, strBuffer, 10);
-  CLcd_WriteString(strBuffer, 0, 0);
-  Uart_Receive(recFrame.data, 4);
+  CLcd_WriteString((uint8_t*)strBuffer, 0, 0);
+  HUart_Receive(recFrame.data, 4);
 }

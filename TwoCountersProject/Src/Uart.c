@@ -9,12 +9,9 @@
  *
  */
 #include "Std_Types.h"
-#include "Uart_Cfg.h"
 #include "Uart.h"
-#include "Gpio.h"
-#include "NVIC.h"
-#include "RCC.h"
 
+#define UART_NUMBER_OF_MODULES        5
 
 typedef struct 
 {
@@ -100,62 +97,116 @@ typedef struct
 
 #define UART_NO_PRESCALER 0x1
 
-static volatile dataBuffer_t txBuffer;
-static volatile dataBuffer_t rxBuffer;
+const uint32_t Uart_Address[UART_NUMBER_OF_MODULES] = {
+  0x40013800,
+  0x40004400,
+  0x40004800,
+  0x40004C00,
+  0x40005000
+};
 
-static volatile txCb_t appTxNotify;
-static volatile rxCb_t appRxNotify;
+static volatile dataBuffer_t txBuffer[UART_NUMBER_OF_MODULES];
+static volatile dataBuffer_t rxBuffer[UART_NUMBER_OF_MODULES];
 
-static volatile uart_t *UART1 = (volatile uart_t *)(0x40013800);
-
+static volatile txCb_t appTxNotify[UART_NUMBER_OF_MODULES];
+static volatile rxCb_t appRxNotify[UART_NUMBER_OF_MODULES];
 /**
- * @brief The interrupt handler for the UART 1 module
+ * @brief The Interrupt Handler for the UART driver
  * 
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  */
-void USART1_IRQHandler(void) 
+static void UART_IRQHandler(uint8_t uartModule)
 {
-  if (UART_TXE_GET & UART1->SR) 
+  volatile uart_t* Uart = (volatile uart_t*)Uart_Address[uartModule];
+  if (UART_TXE_GET & Uart->SR) 
   {
-    if (txBuffer.size != txBuffer.pos) 
+    if (txBuffer[uartModule].size != txBuffer[uartModule].pos) 
     {
-      UART1->DR = txBuffer.ptr[txBuffer.pos++];
+      Uart->DR = txBuffer[uartModule].ptr[txBuffer[uartModule].pos++];
     } 
     else 
     {
-      txBuffer.ptr = NULL;
-      txBuffer.size = 0;
-      txBuffer.pos = 0;
-      txBuffer.state = UART_BUFFER_IDLE;
-      if (appTxNotify) 
+      txBuffer[uartModule].ptr = NULL;
+      txBuffer[uartModule].size = 0;
+      txBuffer[uartModule].pos = 0;
+      txBuffer[uartModule].state = UART_BUFFER_IDLE;
+      if (appTxNotify[uartModule]) 
       {
-        appTxNotify();
+        appTxNotify[uartModule]();
       }
-      UART1->CR1 &= UART_TXEIE_CLR;
+      Uart->CR1 &= UART_TXEIE_CLR;
     }
   }
 
-  if (UART_RXNE_GET & UART1->SR) 
+  if (UART_RXNE_GET & Uart->SR) 
   {
-    UART1->SR &= UART_RXNE_CLR;
-    if (UART_BUFFER_BUSY == rxBuffer.state) 
+    Uart->SR &= UART_RXNE_CLR;
+    if (UART_BUFFER_BUSY == rxBuffer[uartModule].state) 
     {
-      rxBuffer.ptr[rxBuffer.pos] = UART1->DR;
-      rxBuffer.pos++;
+      rxBuffer[uartModule].ptr[rxBuffer[uartModule].pos] = Uart->DR;
+      rxBuffer[uartModule].pos++;
 
-      if (rxBuffer.pos == rxBuffer.size) 
+      if (rxBuffer[uartModule].pos == rxBuffer[uartModule].size) 
       {
-        rxBuffer.ptr = NULL;
-        rxBuffer.size = 0;
-        rxBuffer.pos = 0;
-        rxBuffer.state = UART_BUFFER_IDLE;
-        if (appRxNotify) 
+        rxBuffer[uartModule].ptr = NULL;
+        rxBuffer[uartModule].size = 0;
+        rxBuffer[uartModule].pos = 0;
+        rxBuffer[uartModule].state = UART_BUFFER_IDLE;
+        if (appRxNotify[uartModule]) 
         {
-          appRxNotify();
+          appRxNotify[uartModule]();
         }
       }
     }
   }
 }
+/**
+ * @brief The UART 1 Handler
+ * 
+ */
+void USART1_IRQHandler(void)
+{
+  UART_IRQHandler(UART1);
+}
+/**
+ * @brief The UART 2 Handler
+ * 
+ */
+void USART2_IRQHandler(void)
+{
+  UART_IRQHandler(UART2);
+}
+/**
+ * @brief The UART 3 Handler
+ * 
+ */
+void USART3_IRQHandler(void)
+{
+  UART_IRQHandler(UART3);
+}
+/**
+ * @brief The UART 4 Handler
+ * 
+ */
+void UART4_IRQHandler(void)
+{
+  UART_IRQHandler(UART4);
+}
+/**
+ * @brief The UART 5 Handler
+ * 
+ */
+void UART5_IRQHandler(void)
+{
+  UART_IRQHandler(UART5);
+}
+
+
 
 /**
  * @brief Initializes the UART
@@ -171,46 +222,41 @@ void USART1_IRQHandler(void)
  * @param flowControl the flow control
  *                 UART_FLOW_CONTROL_EN
  *                 UART_FLOW_CONTROL_DIS
+ * @param sysClk the clock of the system
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the function executed successfully
  *                  E_NOT_OK: If the did not execute successfully
  */
-extern Std_ReturnType Uart_Init(uint32_t baudRate, uint32_t stopBits, uint32_t parity, uint32_t flowControl) 
+extern Std_ReturnType Uart_Init(uint32_t baudRate, uint32_t stopBits, uint32_t parity, uint32_t flowControl, uint32_t sysClk, uint8_t uartModule) 
 {
-  gpio_t gpio;
-  RCC_controlAPB2Peripheral(RCC_GPIOA, ENABLE);
-  gpio.pins = GPIO_PIN_9;
-  gpio.port = GPIO_PORTA;
-  gpio.mode = GPIO_MODE_AF_OUTPUT_PP;
-  gpio.speed = GPIO_SPEED_50_MHZ;
-  Gpio_InitPins(&gpio);
-  gpio.pins = GPIO_PIN_10;
-  gpio.mode = GPIO_MODE_INPUT_PULL_UP;
-  Gpio_InitPins(&gpio);
-  RCC_controlAPB2Peripheral(RCC_USART1, ENABLE);
-
-  UART1->BRR = ((uint32_t)((f64)UART_SYSTEM_CLK / ((f64)baudRate * 16.0))) << 4;
+  volatile uart_t* Uart = (volatile uart_t*)Uart_Address[uartModule];
+  Uart->BRR = ((uint32_t)((f64)sysClk / ((f64)baudRate * 16.0))) << 4;
   if (UART_NO_PARITY == parity) 
   {
-    UART1->CR1 &= UART_M_CLR;
-    UART1->CR1 &= UART_NO_PARITY;
+    Uart->CR1 &= UART_M_CLR;
+    Uart->CR1 &= UART_NO_PARITY;
   } 
   else 
   {
-    UART1->CR1 |= UART_M_SET;
-    UART1->CR1 |= UART_PCE_SET;
-    UART1->CR1 &= UART_PS_CLR;
-    UART1->CR1 |= parity;
+    Uart->CR1 |= UART_M_SET;
+    Uart->CR1 |= UART_PCE_SET;
+    Uart->CR1 &= UART_PS_CLR;
+    Uart->CR1 |= parity;
   }
-  UART1->CR2 &= UART_STOP_CLR;
-  UART1->CR2 |= stopBits;
-  UART1->CR3 &= UART_RTSE_CLR;
-  UART1->CR3 |= flowControl;
-  UART1->GTPR |= UART_NO_PRESCALER;
-  rxBuffer.state = UART_BUFFER_IDLE;
-  txBuffer.state = UART_BUFFER_IDLE;
-  UART1->CR1 |= UART_UE_SET | UART_TXEIE_SET | UART_RXNEIE_SET | UART_TE_SET | UART_RE_SET;
-  NVIC_controlInterrupt(NVIC_IRQNUM_USART1, NVIC_ENABLE);
+  Uart->CR2 &= UART_STOP_CLR;
+  Uart->CR2 |= stopBits;
+  Uart->CR3 &= UART_RTSE_CLR;
+  Uart->CR3 |= flowControl;
+  Uart->GTPR |= UART_NO_PRESCALER;
+  rxBuffer[uartModule].state = UART_BUFFER_IDLE;
+  txBuffer[uartModule].state = UART_BUFFER_IDLE;
+  Uart->CR1 |= UART_UE_SET | UART_TXEIE_SET | UART_RXNEIE_SET | UART_TE_SET | UART_RE_SET;
   return E_OK;
 }
 
@@ -219,22 +265,29 @@ extern Std_ReturnType Uart_Init(uint32_t baudRate, uint32_t stopBits, uint32_t p
  *
  * @param data The data to send
  * @param length the length of the data in bytes
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the driver is ready to send
  *                  E_NOT_OK: If the driver can't send data right now
  */
-Std_ReturnType Uart_Send(uint8_t *data, uint16_t length) 
+Std_ReturnType Uart_Send(uint8_t *data, uint16_t length, uint8_t uartModule) 
 {
   Std_ReturnType error = E_NOT_OK;
-  if (data && (length > 0) && txBuffer.state == UART_BUFFER_IDLE) 
+  volatile uart_t* Uart = (volatile uart_t*)Uart_Address[uartModule];
+  if (data && (length > 0) && txBuffer[uartModule].state == UART_BUFFER_IDLE) 
   {
-    txBuffer.state = UART_BUFFER_BUSY;
-    txBuffer.ptr = data;
-    txBuffer.pos = 0;
-    txBuffer.size = length;
+    txBuffer[uartModule].state = UART_BUFFER_BUSY;
+    txBuffer[uartModule].ptr = data;
+    txBuffer[uartModule].pos = 0;
+    txBuffer[uartModule].size = length;
 
-    UART1->DR = txBuffer.ptr[txBuffer.pos++];
-    UART1->CR1 |= UART_TXEIE_SET;
+    Uart->DR = txBuffer[uartModule].ptr[txBuffer[uartModule].pos++];
+    Uart->CR1 |= UART_TXEIE_SET;
     error = E_OK;
   }
   return error;
@@ -244,19 +297,25 @@ Std_ReturnType Uart_Send(uint8_t *data, uint16_t length)
  *
  * @param data The buffer to receive data in
  * @param length the length of the data in bytes
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the driver is ready to receive
  *                  E_NOT_OK: If the driver can't receive data right now
  */
-Std_ReturnType Uart_Receive(uint8_t *data, uint16_t length) 
+Std_ReturnType Uart_Receive(uint8_t *data, uint16_t length, uint8_t uartModule) 
 {
   Std_ReturnType error = E_NOT_OK;
-  if (rxBuffer.state == UART_BUFFER_IDLE) 
+  if (rxBuffer[uartModule].state == UART_BUFFER_IDLE) 
   {
-    rxBuffer.ptr = data;
-    rxBuffer.size = length;
-    rxBuffer.pos = 0;
-    rxBuffer.state = UART_BUFFER_BUSY;
+    rxBuffer[uartModule].ptr = data;
+    rxBuffer[uartModule].size = length;
+    rxBuffer[uartModule].pos = 0;
+    rxBuffer[uartModule].state = UART_BUFFER_BUSY;
     error = E_OK;
   }
   return error;
@@ -266,13 +325,19 @@ Std_ReturnType Uart_Receive(uint8_t *data, uint16_t length)
  * completed
  *
  * @param func the callback function
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the function executed successfully
  *                  E_NOT_OK: If the did not execute successfully
  */
-Std_ReturnType Uart_SetTxCb(txCb_t func) 
+Std_ReturnType Uart_SetTxCb(txCb_t func, uint8_t uartModule) 
 {
-  appTxNotify = func;
+  appTxNotify[uartModule] = func;
   return E_OK;
 }
 /**
@@ -280,12 +345,18 @@ Std_ReturnType Uart_SetTxCb(txCb_t func)
  * completed
  *
  * @param func the callback function
+ * @param uartModule the module number of the UART
+ *                 UART1
+ *                 UART2
+ *                 UART3
+ *                 UART4
+ *                 UART5
  * @return Std_ReturnType A Status
  *                  E_OK: If the function executed successfully
  *                  E_NOT_OK: If the did not execute successfully
  */
-Std_ReturnType Uart_SetRxCb(rxCb_t func) 
+Std_ReturnType Uart_SetRxCb(rxCb_t func, uint8_t uartModule) 
 {
-  appRxNotify = func;
+  appRxNotify[uartModule] = func;
   return E_OK;
 }
